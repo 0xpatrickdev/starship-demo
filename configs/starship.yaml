@@ -1,5 +1,5 @@
 chains:
-  - name: osmosis-1
+  - name: osmosis-test
     type: osmosis
     numValidators: 1
     faucet:
@@ -7,25 +7,25 @@ chains:
     ports:
       rest: 1313
       rpc: 26653
+      grpc: 9091
       faucet: 8082
-  - name: gaia-1
+  - name: gaia-test
     type: cosmos
     numValidators: 1
     faucet:
       enabled: true
     ports:
-      rest: 1317
-      rpc: 26657
+      rest: 1314
+      rpc: 26654
+      grpc: 9092
       faucet: 8083
-
 relayers:
   - name: osmos-gaia
     type: hermes
     replicas: 1
     chains:
-      - osmosis-1
-      - gaia-1
-
+      - osmosis-test
+      - gaia-test
 explorer:
   enabled: true
   ports:
