@@ -19,6 +19,7 @@ chains:
       rpc: 26654
       grpc: 9092
       faucet: 8083
+
 relayers:
   - name: osmos-gaia
     type: hermes
@@ -26,6 +27,7 @@ relayers:
     chains:
       - osmosis-test
       - gaia-test
+
 explorer:
   enabled: true
   ports:
@@ -35,3 +37,4 @@ registry:
   enabled: true
   ports:
     rest: 8081
+
