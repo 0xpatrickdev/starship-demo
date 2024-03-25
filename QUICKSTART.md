@@ -8,6 +8,7 @@ make setup-deps
 ```
 
 2. Ensure Kubernetes is enabled in Docker
+
 <img src="./docker-desktop-kubernetes.png" width="480px"></img>
 
 3. If on Mac silicon, ensure Rosetta emulation is enabled.
@@ -22,7 +23,7 @@ cargo install ibc-relayer-cli --bin hermes --locked
 hermes version
 > hermes 
 ```
-[More detailed install instructions](https://hermes.informal.systems/quick-start/installation.html#install-via-cargo)
+[More detailed hermes install instructions](https://hermes.informal.systems/quick-start/installation.html#install-via-cargo)
 
 
 ## 2. Start Starship Service
