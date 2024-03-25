@@ -1,16 +1,18 @@
 chains:
   - name: osmosis-test
     type: osmosis
+    image: ghcr.io/cosmology-tech/starship/osmosis:v21.0.0@sha256:233a6fc5218f74f85abfda8d7219fedb54112fbc8933d4170d1db39b603d1583
     numValidators: 1
     faucet:
       enabled: true
     ports:
-      rest: 1313
-      rpc: 26653
-      grpc: 9091
-      faucet: 8082
+      rest: 1315
+      rpc: 26655
+      grpc: 9093
+      faucet: 8084
   - name: gaia-test
     type: cosmos
+    image: ghcr.io/cosmology-tech/starship/gaia:v14.0.0@sha256:e63e49b328737e62c432158d7619e04b91f925403c89148ed4c594a305a78c83
     numValidators: 1
     faucet:
       enabled: true
