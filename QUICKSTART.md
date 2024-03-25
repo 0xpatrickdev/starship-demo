@@ -13,7 +13,7 @@ make setup-deps
 
 3. If on Mac silicon, ensure Rosetta emulation is enabled.
 
-4. Install Hermes, ensure it's in PATH
+4. Install Hermes, ensure it's in PATH (separate from Starship, but necessary for this demo)
 
 ```bash
 # assumes rust is installed
@@ -57,8 +57,8 @@ make ACCT_ADDR=agoric1gtkg0g6x8lqc734ht3qe2sdkrfugpdp2h7fuu0 FUNDS=2000000ubld f
 
 ## 5. Add keys to hermes
 ```bash
-hermes keys add --chain agoriclocal --mnemonic-file relayer/keys/user-1.key
-hermes keys add --chain osmosis-test --mnemonic-file relayer/keys/osmosis-1.key
+hermes keys add --chain agoriclocal --mnemonic-file keys/user-1.key
+hermes keys add --chain osmosis-test --mnemonic-file keys/osmosis-1.key
 ```
 
 ## 6. Add clients, connection, and start Hermes
