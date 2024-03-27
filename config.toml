@@ -85,7 +85,7 @@ port = 3001
 # max_tx_size = 2097152
 # clock_drift = "5s"
 # max_block_time = "30s"
-# trusting_period = "75s"
+# trusting_period = "24h"
 # trust_threshold = { numerator = '1', denominator = '3' }
 # address_type = { derivation = 'cosmos' }
 # gas_price = { price = 0.25, denom = "uatom" }
@@ -127,7 +127,7 @@ max_msg_num = 30
 max_tx_size = 2097152
 clock_drift = "5s"
 max_block_time = "30s"
-trusting_period = "75s"
+trusting_period = "24h"
 trust_threshold = { numerator = '1', denominator = '3' }
 address_type = { derivation = 'cosmos' }
 gas_price = { price = 0.025, denom = "uosmo" }
