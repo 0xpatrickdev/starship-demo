@@ -170,8 +170,7 @@ agoric open --repl
 E(home.agoricNames).lookup('instance', 'stakeAtom')
 E(home.zoe).getPublicFacet(history[n])
 pf = history[n]
-E(pf).providePort()
-E(pf).provideAccount('main', 'connection-1', 'connection-0')
+E(pf).provideAccount()
 ```
 
 
