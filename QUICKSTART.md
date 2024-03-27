@@ -21,7 +21,7 @@ cargo install ibc-relayer-cli --bin hermes --locked
 
 # confirm hermes is installed
 hermes version
-> hermes 
+> hermes v1.8.0+39036d1
 ```
 [More detailed hermes install instructions](https://hermes.informal.systems/quick-start/installation.html#install-via-cargo)
 
@@ -71,6 +71,90 @@ hermes --config ./config.toml create connection --a-chain agoriclocal --b-chain 
 # when successful, start client
 hermes --config ./config.toml start
 ```
+
+<details>
+  <summary>Example Output</summary>
+
+  ```bash
+  $ hermes --config ./config.toml create client --host-chain agoriclocal --reference-chain osmosis-test
+  SUCCESS CreateClient(
+      CreateClient(
+          Attributes {
+              client_id: ClientId(
+                  "07-tendermint-0",
+              ),
+              client_type: Tendermint,
+              consensus_height: Height {
+                  revision: 0,
+                  height: 148,
+              },
+          },
+      ),
+  )
+  ```
+  ```bash
+  $ hermes --config ./config.toml create client --host-chain osmosis-test --reference-chain agoriclocal
+  SUCCESS CreateClient(
+      CreateClient(
+          Attributes {
+              client_id: ClientId(
+                  "07-tendermint-1",
+              ),
+              client_type: Tendermint,
+              consensus_height: Height {
+                  revision: 0,
+                  height: 27,
+              },
+          },
+      ),
+  )
+  ```
+  ```bash
+  $ hermes create connection --a-chain agoriclocal --b-chain osmosis-test
+  INFO ThreadId(01) 🥂 agoriclocal => OpenInitConnection(OpenInit { Attributes { connection_id: connection-0, client_id: 07-tendermint-1, counterparty_connection_id: None, counterparty_client_id: 07-tendermint-2 } }) at height 0-30
+  INFO ThreadId(01) 🥂 osmosis-test => OpenTryConnection(OpenTry { Attributes { connection_id: connection-1, client_id: 07-tendermint-2, counterparty_connection_id: connection-0, counterparty_client_id: 07-tendermint-1 } }) at height 0-185
+  INFO ThreadId(01) 🥂 agoriclocal => OpenAckConnection(OpenAck { Attributes { connection_id: connection-0, client_id: 07-tendermint-1, counterparty_connection_id: connection-1, counterparty_client_id: 07-tendermint-2 } }) at height 0-34
+  INFO ThreadId(01) 🥂 osmosis-test => OpenConfirmConnection(OpenConfirm { Attributes { connection_id: connection-1, client_id: 07-tendermint-2, counterparty_connection_id: connection-0, counterparty_client_id: 07-tendermint-1 } }) at height 0-203
+  INFO ThreadId(01) connection handshake already finished for Connection { delay_period: 0ns, a_side: ConnectionSide { chain: BaseChainHandle { chain_id: agoriclocal }, client_id: 07-tendermint-1, connection_id: connection-0 }, b_side: ConnectionSide { chain: BaseChainHandle { chain_id: osmosis-test }, client_id: 07-tendermint-2, connection_id: connection-1 } }
+  SUCCESS Connection {
+      delay_period: 0ns,
+      a_side: ConnectionSide {
+          chain: BaseChainHandle {
+              chain_id: ChainId {
+                  id: "agoriclocal",
+                  version: 0,
+              },
+              runtime_sender: Sender { .. },
+          },
+          client_id: ClientId(
+              "07-tendermint-1",
+          ),
+          connection_id: Some(
+              ConnectionId(
+                  "connection-0", // controllerConnectionId
+              ),
+          ),
+      },
+      b_side: ConnectionSide {
+          chain: BaseChainHandle {
+              chain_id: ChainId {
+                  id: "osmosis-test",
+                  version: 0,
+              },
+              runtime_sender: Sender { .. },
+          },
+          client_id: ClientId(
+              "07-tendermint-2",
+          ),
+          connection_id: Some(
+              ConnectionId(
+                  "connection-1", // hostConnectionId
+              ),
+          ),
+      },
+  }
+  ```
+</details>
 
 ## 7. Start ag-solo + REPL 
 ```bash
