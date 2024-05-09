@@ -1,10 +1,9 @@
 NAME = starship-getting-started
 FILE = configs/starship.yaml
-TINY_FILE = configs/tiny-starship.yaml
 
 HELM_REPO = starship
 HELM_CHART = devnet
-HELM_VERSION = v0.1.48
+HELM_VERSION = v0.1.49-rc1
 
 ###############################################################################
 ###                              All commands                               ###
@@ -33,9 +32,6 @@ setup-deps:
 
 install:
 	bash $(CURDIR)/scripts/install.sh --config $(FILE) --name $(NAME) --version $(HELM_VERSION)
-
-install-tiny:
-	$(MAKE) install FILE=$(TINY_FILE)
 
 delete:
 	-helm delete $(NAME)

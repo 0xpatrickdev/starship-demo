@@ -1,5 +1,24 @@
 chains:
-  - name: osmosis-test
+  - name: agoriclocal
+    type: agoric
+    image: ghcr.io/agoric/agoric-3-proposals@sha256:0a5b643b03a42e71926a4add9fa91711be8e13a670f0dea106d42be1fbcc2b66
+    numValidators: 1
+    genesis:
+      app_state:
+        staking:
+          params:
+            unbonding_time: "48h"
+    faucet:
+      enabled: false
+    ports:
+      rest: 1317
+      rpc: 26657
+      exposer: 38087
+      grpc: 9090
+    resources:
+      cpu: 1
+      memory: 2Gi
+  - name: osmosislocal
     type: osmosis
     image: ghcr.io/cosmology-tech/starship/osmosis:v21.0.0@sha256:233a6fc5218f74f85abfda8d7219fedb54112fbc8933d4170d1db39b603d1583
     numValidators: 1
@@ -8,14 +27,25 @@ chains:
         staking:
           params:
             unbonding_time: "48h"
+        interchain_accounts:
+          host_genesis_state:
+            params:
+              host_enabled: true
+              allow_messages: ["*"]
+        interchainquery:
+          host_port: "icqhost"
+          params:
+            host_enabled: true
+            allow_queries: ["*"]
     faucet:
       enabled: true
+      type: starship
     ports:
       rest: 1315
       rpc: 26655
       grpc: 9093
       faucet: 8084
-  - name: gaia-test
+  - name: gaialocal
     type: cosmos
     image: ghcr.io/cosmology-tech/starship/gaia:v14.0.0@sha256:e63e49b328737e62c432158d7619e04b91f925403c89148ed4c594a305a78c83
     numValidators: 1
@@ -24,6 +54,11 @@ chains:
         staking:
           params:
             unbonding_time: "48h"
+        interchain_accounts:
+          host_genesis_state:
+            params:
+              host_enabled: true
+              allow_messages: ["*"]
     faucet:
       enabled: true
     ports:
@@ -33,12 +68,24 @@ chains:
       faucet: 8083
 
 relayers:
-  - name: osmos-gaia
+  - name: osmosis-gaia
     type: hermes
     replicas: 1
     chains:
-      - osmosis-test
-      - gaia-test
+      - osmosislocal
+      - gaialocal
+  - name: agoric-osmosis
+    type: hermes
+    replicas: 1
+    chains:
+      - agoriclocal
+      - osmosislocal
+  - name: agoric-gaia
+    type: hermes
+    replicas: 1
+    chains:
+      - agoriclocal
+      - gaialocal
 
 explorer:
   enabled: true
@@ -49,4 +96,3 @@ registry:
   enabled: true
   ports:
     rest: 8081
-
