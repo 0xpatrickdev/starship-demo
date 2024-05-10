@@ -1,5 +1,5 @@
 NAME = starship-getting-started
-FILE = configs/starship.yaml
+FILE = starship.yaml
 
 HELM_REPO = starship
 HELM_CHART = devnet
