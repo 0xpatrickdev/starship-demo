@@ -10,7 +10,7 @@
 set -euo pipefail
 
 # read config file from args into variable
-CONFIGFILE="configs/starship.yaml"
+CONFIGFILE="starship.yaml"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 echo "Script dir: ${SCRIPT_DIR}"
