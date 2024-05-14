@@ -10,7 +10,7 @@
 set -euo pipefail
 
 # read config file from args into variable
-CONFIGFILE="config.yaml"
+CONFIGFILE="starship.yaml"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 echo "Script dir: ${SCRIPT_DIR}"
@@ -22,7 +22,8 @@ NAMESPACE=""
 HELM_REPO="starship"
 HELM_CHART="starship/devnet"
 HELM_REPO_URL="https://cosmology-tech.github.io/starship/"
-HELM_CHART_VERSION="0.1.43"
+HELM_CHART_VERSION="0.1.49-rc1"
+HELM_NAME="starship-getting-started"
 
 # check_helm function verifies the helm binary is installed
 function check_helm() {
