@@ -1,0 +1,294 @@
+{{- range $chain := .Values.chains }}
+{{- if ne $chain.type "virtual" }}
+{{- if gt $chain.numValidators 1.0 }}
+{{ $dataExposer := dict "chain" $chain.name "port" ($.Values.exposer.ports.rest | quote | default "8081") }}
+{{ $defaultFile := $.Files.Get "defaults.yaml" | fromYaml }}
+
+{{ $chain := include "devnet.fullchain" (dict "name" $chain.name "file" $defaultFile "context" $) | fromJson }}
+
+{{ $initParams := dict "chains" (list $chain.name) "port" $.Values.exposer.ports.rest "context" $ }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $chain.hostname }}-validator
+spec:
+  serviceName: {{ $chain.hostname }}-validator
+  podManagementPolicy: Parallel
+  replicas: {{ sub $chain.numValidators 1 }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $chain.type }}
+      app.kubernetes.io/name: {{ $chain.name }}-validator
+  template:
+    metadata:
+      annotations:
+        quality: release
+        role: api-gateway
+        sla: high
+        tier: gateway
+      labels:
+        app.kubernetes.io/instance: {{ $chain.type }}
+        app.kubernetes.io/type: {{ $chain.name }}
+        app.kubernetes.io/name: {{ $chain.name }}-validator
+        app.kubernetes.io/version: {{ $.Chart.AppVersion }}
+    spec:
+      {{- include "imagePullSecrets" $chain | indent 6 }}
+      initContainers:
+        {{- if $chain.toBuild }}
+        - name: init-build-images
+          image: ghcr.io/cosmology-tech/starship/builder:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - "-c"
+            - |
+              # Install cosmovisor
+              go install github.com/cosmos/cosmos-sdk/cosmovisor/cmd/cosmovisor@v1.0.0
+
+              # Build genesis
+              {{- if $chain.upgrade.enabled  }}
+              UPGRADE_NAME=genesis CODE_TAG={{ $chain.upgrade.genesis }} bash -e /scripts/build-chain.sh
+              {{- range $upgrade := $chain.upgrade.upgrades }}
+              UPGRADE_NAME={{ $upgrade.name }} CODE_TAG={{ $upgrade.version }} bash -e /scripts/build-chain.sh
+              {{- end }}
+              {{- else if $chain.build.enabled }}
+              UPGRADE_NAME=genesis CODE_TAG={{ $chain.build.source }} bash -e /scripts/build-chain.sh
+              {{- end }}
+          env:
+            - name: CODE_REF
+              value: {{ $chain.repo }}
+            - name: UPGRADE_DIR
+              value: {{ $chain.home }}/cosmovisor
+            - name: GOBIN
+              value: /go/bin
+            - name: CHAIN_NAME
+              value: {{ $chain.name }}
+                    {{ include "devnet.defaultEvnVars" $chain | indent 12 }}
+          resources: {{- include "devnet.node.resources" ( dict "node" $chain "context" $ ) | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ $chain.home }}
+              name: node
+            - mountPath: /configs
+              name: addresses
+            - mountPath: /scripts
+              name: scripts
+        {{- end }}
+        {{- include "devnet.init.wait" $initParams | indent 8 }}
+        - name: init-validator
+          image: {{ $chain.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          env:
+            {{- include "devnet.defaultEvnVars" $chain | indent 12 }}
+            {{- include "devnet.evnVars" $chain | indent 12 }}
+            {{- include "devnet.timeoutVars" $.Values | indent 12 }}
+            {{- include "devnet.genesisVars" $dataExposer | indent 12 }}
+            - name: KEYS_CONFIG
+              value: /configs/keys.json
+            - name: FAUCET_ENABLED
+              value: "{{ $chain.faucet.enabled }}"
+            - name: METRICS
+              value: "{{ $chain.metrics }}"
+          command:
+            - bash
+            - "-c"
+            - |
+              VAL_INDEX=${HOSTNAME##*-}
+              echo "Validator Index: $VAL_INDEX"
+              {{- if $chain.toBuild }}
+              cp $CHAIN_DIR/cosmovisor/genesis/bin/$CHAIN_BIN /usr/bin
+              {{- end }}
+
+              if [ -f $CHAIN_DIR/config/genesis.json ]; then
+                echo "Genesis file exists, exiting early"
+                exit 0
+              fi
+
+              VAL_NAME=$(jq -r ".validators[0].name" $KEYS_CONFIG)-$VAL_INDEX
+              echo "Validator Index: $VAL_INDEX, Key name: $VAL_NAME"
+
+              echo "Recover validator $VAL_NAME"
+              $CHAIN_BIN init $VAL_NAME --chain-id $CHAIN_ID
+              jq -r ".validators[0].mnemonic" $KEYS_CONFIG | $CHAIN_BIN keys add $VAL_NAME --index $VAL_INDEX --recover --keyring-backend="test"
+
+              curl http://$GENESIS_HOST.$NAMESPACE.svc.cluster.local:$GENESIS_PORT/genesis -o $CHAIN_DIR/config/genesis.json
+              echo "Genesis file that we got....."
+              cat $CHAIN_DIR/config/genesis.json
+
+              echo "Create node id json file"
+              NODE_ID=$($CHAIN_BIN tendermint show-node-id)
+              echo '{"node_id":"'$NODE_ID'"}' > $CHAIN_DIR/config/node_id.json
+          resources: {{- include "devnet.node.resources" ( dict "node" $chain "context" $ ) | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ $chain.home }}
+              name: node
+            - mountPath: /configs
+              name: addresses
+            - mountPath: /scripts
+              name: scripts
+        - name: init-config
+          image: {{ $chain.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          env:
+            {{- include "devnet.defaultEvnVars" $chain | indent 12 }}
+            {{- include "devnet.evnVars" $chain | indent 12 }}
+            {{- include "devnet.timeoutVars" $.Values | indent 12 }}
+            {{- include "devnet.genesisVars" $dataExposer | indent 12 }}
+            - name: KEYS_CONFIG
+              value: /configs/keys.json
+            - name: METRICS
+              value: "{{ $chain.metrics }}"
+          command:
+            - bash
+            - "-c"
+            - |
+              VAL_INDEX=${HOSTNAME##*-}
+              echo "Validator Index: $VAL_INDEX"
+              {{- if $chain.toBuild }}
+              cp $CHAIN_DIR/cosmovisor/genesis/bin/$CHAIN_BIN /usr/bin
+              {{- end }}
+
+              echo "Running setup config script..."
+              bash -e /scripts/update-config.sh
+              
+              curl -s http://$GENESIS_HOST.$NAMESPACE.svc.cluster.local:$GENESIS_PORT/node_id
+              NODE_ID=$(curl -s http://$GENESIS_HOST.$NAMESPACE.svc.cluster.local:$GENESIS_PORT/node_id | jq -r ".node_id")
+              if [[ $NODE_ID == "" ]]; then
+                echo "Node ID is null, exiting early"
+                exit 1
+              fi
+              
+              GENESIS_NODE_P2P=$NODE_ID@$GENESIS_HOST.$NAMESPACE.svc.cluster.local:26656
+              echo "Node P2P: $GENESIS_NODE_P2P"
+              sed -i "s/persistent_peers = \"\"/persistent_peers = \"$GENESIS_NODE_P2P\"/g" $CHAIN_DIR/config/config.toml
+
+              echo "Printing the whole config.toml file"
+              cat $CHAIN_DIR/config/config.toml
+          resources: {{- include "devnet.node.resources" ( dict "node" $chain "context" $ ) | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ $chain.home }}
+              name: node
+            - mountPath: /configs
+              name: addresses
+            - mountPath: /scripts
+              name: scripts
+      containers:
+        - name: validator
+          image: {{ $chain.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          env:
+            {{- include "devnet.defaultEvnVars" $chain | indent 12 }}
+            {{- include "devnet.evnVars" $chain | indent 12 }}
+            {{- include "devnet.genesisVars" $dataExposer | indent 12}}
+            - name: KEYS_CONFIG
+              value: /configs/keys.json
+            - name: SLOGFILE
+              value: "slog.slog"
+          command:
+            - bash
+            - "-c"
+            - |
+              set -eux
+              START_ARGS=""
+              {{- if ($chain.cometmock.enabled) }}
+              START_ARGS="--grpc-web.enable=false --transport=grpc --with-tendermint=false --address tcp://0.0.0.0:26658"
+              {{- end }}
+
+              # Starting the chain
+              {{- if $chain.toBuild }}
+              cp $CHAIN_DIR/cosmovisor/genesis/bin/$CHAIN_BIN /usr/bin
+              /usr/bin/cosmovisor start $START_ARGS
+              {{- else }}
+              $CHAIN_BIN start $START_ARGS
+              {{- end }}
+          {{/*If cometmock is enabled, then validator is initialized in hook of cometmock statefulset*/}}
+          {{- if not ($chain.cometmock.enabled) }}
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - bash
+                  - "-c"
+                  - "-e"
+                  - |
+                    while [ $(curl -sw '%{http_code}' http://localhost:26657/status -o /dev/null) -ne 200 ]; do
+                      echo "Validator node does not seem to be ready. Waiting for it to start..."
+                      echo "Checking: http://localhost:26657/status"
+                      sleep 10;
+                    done
+
+                    set -eux
+                    export
+                    VAL_INDEX=${HOSTNAME##*-}
+                    VAL_NAME="$(jq -r ".validators[0].name" $KEYS_CONFIG)-$VAL_INDEX"
+                    echo "Validator Index: $VAL_INDEX, Key name: $VAL_NAME. Chain bin $CHAIN_BIN"
+
+                    VAL_ADDR=$($CHAIN_BIN keys show $VAL_NAME -a --keyring-backend="test")
+                    echo "Transfer tokens to address $VAL_ADDR before trying to create validator. Best effort"
+                    bash -e /scripts/transfer-tokens.sh \
+                      $VAL_ADDR \
+                      $DENOM \
+                      http://$GENESIS_HOST.$NAMESPACE.svc.cluster.local:8000/credit \
+                      "{{ $chain.faucet.enabled }}" || true
+
+                    $CHAIN_BIN keys list --keyring-backend test | jq
+                    VAL_NAME=$VAL_NAME bash -e /scripts/create-validator.sh
+          {{- end }}
+          resources: {{- include "devnet.node.resources" ( dict "node" $chain "context" $ ) | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ $chain.home }}
+              name: node
+            - mountPath: /configs
+              name: addresses
+            - mountPath: /scripts
+              name: scripts
+          {{- if not ($chain.cometmock.enabled) }}
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: 26657
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          {{- end }}
+        - name: exposer
+          image: {{ $.Values.exposer.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          env:
+            {{- include "devnet.defaultEvnVars" $chain | indent 12 }}
+            {{- include "devnet.evnVars" $chain | indent 12 }}
+            {{- include "devnet.genesisVars" $dataExposer | indent 12}}
+            - name: EXPOSER_HTTP_PORT
+              value: "8081"
+            - name: EXPOSER_GRPC_PORT
+              value: "9099"
+            - name: EXPOSER_GENESIS_FILE
+              value: {{ $chain.home }}/config/genesis.json
+            - name: EXPOSER_MNEMONIC_FILE
+              value: /configs/keys.json
+            - name: EXPOSER_PRIV_VAL_FILE
+              value: {{ $chain.home }}/config/priv_validator_key.json
+            - name: EXPOSER_NODE_KEY_FILE
+              value: {{ $chain.home }}/config/node_key.json
+            - name: EXPOSER_PRIV_VAL_STATE_FILE
+              value: {{ $chain.home }}/data/priv_validator_state.json
+          command: [ "exposer" ]
+          resources: {{- include "getResourceObject" $.Values.exposer.resources | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ $chain.home }}
+              name: node
+            - mountPath: /configs
+              name: addresses
+      volumes:
+        - name: node
+          emptyDir: { }
+        - name: addresses
+          configMap:
+            name: keys
+        - name: scripts
+          configMap:
+            name: setup-scripts-{{ $chain.hostname }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

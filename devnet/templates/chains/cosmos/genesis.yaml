@@ -1,0 +1,389 @@
+{{- range $chain := .Values.chains }}
+{{- if ne $chain.type "virtual" }}
+{{ $dataExposer := dict "chain" $chain.name "port" ($.Values.exposer.ports.rest | quote | default "8081") }}
+{{ $defaultFile := $.Files.Get "defaults.yaml" | fromYaml }}
+
+{{ $chain := include "devnet.fullchain" (dict "name" $chain.name "file" $defaultFile "context" $) | fromJson }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $chain.hostname }}-genesis
+spec:
+  serviceName: {{ $chain.hostname }}-genesis
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $chain.type }}
+      app.kubernetes.io/name: {{ $chain.name }}-genesis
+  template:
+    metadata:
+      annotations:
+        quality: release
+        role: api-gateway
+        sla: high
+        tier: gateway
+      labels:
+        app.kubernetes.io/instance: {{ $chain.type }}
+        app.kubernetes.io/type: {{ $chain.name }}
+        app.kubernetes.io/name: {{ $chain.name }}-genesis
+        app.kubernetes.io/rawname: {{ $chain.name }}
+        app.kubernetes.io/version: {{ $.Chart.AppVersion }}
+    spec:
+      {{- include "imagePullSecrets" $chain | indent 6 }}
+      initContainers:
+        {{- if $chain.toBuild }}
+        - name: init-build-images
+          image: ghcr.io/cosmology-tech/starship/builder:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - "-c"
+            - |
+              # Install cosmovisor
+              go install github.com/cosmos/cosmos-sdk/cosmovisor/cmd/cosmovisor@v1.0.0
+
+              # Build genesis
+              {{- if $chain.upgrade.enabled  }}
+              UPGRADE_NAME=genesis CODE_TAG={{ $chain.upgrade.genesis }} bash -e /scripts/build-chain.sh
+              {{- range $upgrade := $chain.upgrade.upgrades }}
+              UPGRADE_NAME={{ $upgrade.name }} CODE_TAG={{ $upgrade.version }} bash -e /scripts/build-chain.sh
+              {{- end }}
+              {{- else if $chain.build.enabled }}
+              UPGRADE_NAME=genesis CODE_TAG={{ $chain.build.source }} bash -e /scripts/build-chain.sh
+              {{- end }}
+          env:
+            - name: CODE_REF
+              value: {{ $chain.repo }}
+            - name: UPGRADE_DIR
+              value: {{ $chain.home }}/cosmovisor
+            - name: GOBIN
+              value: /go/bin
+            - name: CHAIN_NAME
+              value: {{ $chain.name }}
+            {{ include "devnet.defaultEvnVars" $chain | indent 12 }}
+          resources: {{- include "devnet.node.resources" ( dict "node" $chain "context" $ ) | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ $chain.home }}
+              name: node
+            - mountPath: /configs
+              name: addresses
+            - mountPath: /scripts
+              name: scripts
+        {{- end }}
+        - name: init-genesis
+          image: {{ $chain.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          env:
+            {{- include "devnet.defaultEvnVars" $chain | indent 12 }}
+            {{- include "devnet.evnVars" $chain | indent 12 }}
+            {{- include "devnet.timeoutVars" $.Values | indent 12 }}
+            - name: KEYS_CONFIG
+              value: /configs/keys.json
+            - name: FAUCET_ENABLED
+              value: "{{ $chain.faucet.enabled }}"
+            - name: NUM_VALIDATORS
+              value: "{{ $chain.numValidators }}"
+          command:
+            - bash
+            - "-c"
+            - |
+              VAL_INDEX=${HOSTNAME##*-}
+              echo "Validator Index: $VAL_INDEX"
+              {{- if $chain.toBuild }}
+              cp $CHAIN_DIR/cosmovisor/genesis/bin/$CHAIN_BIN /usr/bin
+              {{- end }}
+
+              if [ -f $CHAIN_DIR/config/genesis.json ]; then
+                echo "Genesis file exists, exiting init container"
+                exit 0
+              fi
+
+              echo "Running setup genesis script..."
+              bash -e /scripts/create-genesis.sh
+              bash -e /scripts/update-genesis.sh
+
+              echo "Create node id json file"
+              NODE_ID=$($CHAIN_BIN tendermint show-node-id)
+              echo '{"node_id":"'$NODE_ID'"}' > $CHAIN_DIR/config/node_id.json
+          resources: {{- include "devnet.node.resources" ( dict "node" $chain "context" $ ) | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ $chain.home }}
+              name: node
+            - mountPath: /configs
+              name: addresses
+            - mountPath: /scripts
+              name: scripts
+        - name: init-config
+          image: {{ $chain.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          env:
+            {{- include "devnet.defaultEvnVars" $chain | indent 12 }}
+            {{- include "devnet.evnVars" $chain | indent 12 }}
+            {{- include "devnet.timeoutVars" $.Values | indent 12 }}
+            - name: KEYS_CONFIG
+              value: /configs/keys.json
+            - name: METRICS
+              value: "{{ $chain.metrics }}"
+          command:
+            - bash
+            - "-c"
+            - |
+              VAL_INDEX=${HOSTNAME##*-}
+              echo "Validator Index: $VAL_INDEX"
+              {{- if $chain.toBuild }}
+              cp $CHAIN_DIR/cosmovisor/genesis/bin/$CHAIN_BIN /usr/bin
+              {{- end }}
+
+              echo "Running setup config script..."
+              {{- if hasKey $chain "genesis" }}
+              jq -s '.[0] * .[1]' $CHAIN_DIR/config/genesis.json /patch/genesis.json > $CHAIN_DIR/config/genesis.json.tmp && mv $CHAIN_DIR/config/genesis.json.tmp $CHAIN_DIR/config/genesis.json
+              {{- end }}
+              bash -e /scripts/update-config.sh
+          resources: {{- include "devnet.node.resources" ( dict "node" $chain "context" $ ) | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ $chain.home }}
+              name: node
+            - mountPath: /configs
+              name: addresses
+            - mountPath: /scripts
+              name: scripts
+            {{- if hasKey $chain "genesis" }}
+            - mountPath: /patch
+              name: patch
+            {{- end }}
+        {{/*if faucet is of type starship, then initialize faucet binary*/}}
+        {{- if and ($chain.faucet.enabled) (eq $chain.faucet.type "starship") }}
+        - name: init-faucet
+          image: {{ $chain.faucet.image }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - "-c"
+            - |
+              # Install faucet binary from the image
+              cp /bin/faucet /faucet/faucet
+              chmod +x /faucet/faucet
+          resources: {{- include "devnet.node.resources" ( dict "node" $chain "context" $ ) | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: /faucet
+              name: faucet
+        {{- end }}
+      containers:
+        - name: validator
+          image: {{ $chain.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          env:
+            {{- include "devnet.defaultEvnVars" $chain | indent 12 }}
+            {{- include "devnet.evnVars" $chain | indent 12 }}
+            - name: FAUCET_ENABLED
+              value: "{{ $chain.faucet.enabled }}"
+            - name: SLOGFILE
+              value: "slog.slog"
+          command:
+            - bash
+            - "-c"
+            - |
+              START_ARGS=""
+              {{- if ($chain.cometmock.enabled) }}
+              START_ARGS="--grpc-web.enable=false --transport=grpc --with-tendermint=false --address tcp://0.0.0.0:26658"
+              {{- end }}
+
+              {{- if $chain.toBuild }}
+              /usr/bin/cosmovisor start $START_ARGS
+              {{- else }}
+              $CHAIN_BIN start $START_ARGS
+              {{- end }}
+          resources: {{- include "devnet.node.resources" ( dict "node" $chain "context" $ ) | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ $chain.home }}
+              name: node
+            - mountPath: /configs
+              name: addresses
+            - mountPath: /scripts
+              name: scripts
+          {{- if not ($chain.cometmock.enabled) }}
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: 26657
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          {{- end }}
+        - name: exposer
+          image: {{ $.Values.exposer.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          env:
+            {{- include "devnet.genesisVars" $dataExposer | indent 12}}
+            - name: EXPOSER_HTTP_PORT
+              value: "8081"
+            - name: EXPOSER_GRPC_PORT
+              value: "9099"
+            - name: EXPOSER_GENESIS_FILE
+              value: {{ $chain.home }}/config/genesis.json
+            - name: EXPOSER_MNEMONIC_FILE
+              value: /configs/keys.json
+            - name: EXPOSER_PRIV_VAL_FILE
+              value: {{ $chain.home }}/config/priv_validator_key.json
+            - name: EXPOSER_NODE_KEY_FILE
+              value: {{ $chain.home }}/config/node_key.json
+            - name: EXPOSER_NODE_ID_FILE
+              value: {{ $chain.home }}/config/node_id.json
+            - name: EXPOSER_PRIV_VAL_STATE_FILE
+              value: {{ $chain.home }}/data/priv_validator_state.json
+          command: [ "exposer" ]
+          resources: {{- include "getResourceObject" $.Values.exposer.resources | trim | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ $chain.home }}
+              name: node
+            - mountPath: /configs
+              name: addresses
+        {{- if $chain.faucet.enabled }}
+        {{- if eq $chain.faucet.type "cosmjs" }}
+        - name: faucet
+          image: {{ $chain.faucet.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          env:
+            - name: FAUCET_CONCURRENCY
+              value: "{{ $chain.faucet.concurrency }}"
+            - name: FAUCET_PORT
+              value: "{{ $chain.faucet.ports.rest }}"
+            - name: FAUCET_MEMO
+              value: "faucet txn"
+            - name: FAUCET_GAS_PRICE
+              value: "0.025{{ $chain.denom }}"
+            - name: FAUCET_GAS_LIMIT
+              value: "2000000"
+            - name: FAUCET_ADDRESS_PREFIX
+              value: "{{ $chain.prefix }}"
+            - name: FAUCET_REFILL_FACTOR
+              value: "8"
+            - name: FAUCET_REFILL_THRESHOLD
+              value: "20"
+            - name: FAUCET_COOLDOWN_TIME
+              value: "0"
+            - name: COINS
+              value: "{{ $chain.coins }}"
+            - name: HD_PATH
+              value: "{{ $chain.hdPath }}"
+          command:
+            - bash
+            - "-c"
+            - |
+              export FAUCET_TOKENS=$(printf '%s\n' ${COINS//[[:digit:]]/})
+
+              for coin in ${COINS//,/ }
+              do
+                  var="FAUCET_CREDIT_AMOUNT_$(printf '%s\n' ${coin//[[:digit:]]/} | tr '[:lower:]' '[:upper:]')"
+                  amt="${coin//[!0-9]/}"
+                  export $var=$((amt/10000))
+              done
+
+              export FAUCET_PATH_PATTERN="${HD_PATH:0:$((${#HD_PATH}-1))}a"
+              export FAUCET_MNEMONIC=$(jq -r ".faucet[0].mnemonic" /configs/keys.json)
+
+              echo "FAUCET_MNEMONIC: $FAUCET_MNEMONIC"
+              echo "FAUCET_PATH_PATTERN: $FAUCET_PATH_PATTERN"
+
+              export | grep "FAUCET"
+
+              while [ $(curl -sw '%{http_code}' http://localhost:26657/status -o /dev/null) -ne 200 ]; do
+                echo "Validator node does not seem to be ready. Waiting for it to start..."
+                echo "Checking: http://localhost:26657/status"
+                sleep 10;
+              done
+
+              /app/packages/faucet/bin/cosmos-faucet-dist start "http://localhost:26657"
+          volumeMounts:
+            - mountPath: /configs
+              name: addresses
+          resources: {{- include "getResourceObject" $chain.faucet.resources | trim | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: {{ $chain.faucet.ports.rest }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+        {{- else if eq $chain.faucet.type "starship" }}
+        - name: faucet
+          image: {{ $chain.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          env:
+            - name: FAUCET_CONCURRENCY
+              value: "{{ $chain.faucet.concurrency }}"
+            - name: FAUCET_HTTP_PORT
+              value: "{{ $chain.faucet.ports.rest }}"
+            - name: FAUCET_CHAIN_BINARY
+              value: "{{ $chain.binary }}"
+            - name: FAUCET_CHAIN_ID
+              value: "{{ $chain.name }}"
+            - name: COINS
+              value: "{{ $chain.coins }}"
+          command:
+            - bash
+            - "-c"
+            - |
+              CREDIT_COINS=""
+              FEES=""
+              for coin in ${COINS//,/ }
+              do
+                  amt="${coin//[!0-9]/}"
+                  denom="${coin//[0-9]/}"
+                  creditAmt=$(echo ${coin//[!0-9]/} | sed -e "s/0000$//")
+                  if [[ $CREDIT_COINS == "" ]]
+                  then
+                    CREDIT_COINS="$creditAmt$denom"
+                    feesAmt=$(echo ${coin//[!0-9]/} | sed -e "s/0000000$//")
+                    FEES="$feesAmt$denom"
+                  else
+                    CREDIT_COINS="${CREDIT_COINS},$creditAmt$denom"
+                  fi
+              done
+
+              export FAUCET_MNEMONIC=$(jq -r ".faucet[0].mnemonic" /configs/keys.json)
+
+              export | grep "FAUCET"
+
+              while [ $(curl -sw '%{http_code}' http://localhost:26657/status -o /dev/null) -ne 200 ]; do
+                echo "Validator node does not seem to be ready. Waiting for it to start..."
+                echo "Checking: http://localhost:26657/status"
+                sleep 10;
+              done
+
+              /faucet/faucet --credit-coins="$CREDIT_COINS" --chain-fees="$FEES"
+          volumeMounts:
+            - mountPath: /configs
+              name: addresses
+            - mountPath: /faucet
+              name: faucet
+          resources: {{- include "getResourceObject" $chain.faucet.resources | trim | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: {{ $chain.faucet.ports.rest }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+        {{- end }}
+        {{- end }}
+      volumes:
+        - name: node
+          emptyDir: { }
+        - name: addresses
+          configMap:
+            name: keys
+        - name: scripts
+          configMap:
+            name: setup-scripts-{{- include "devnet.chain.name" $chain.name }}
+        {{- if hasKey $chain "genesis" }}
+        - name: patch
+          configMap:
+            name: patch-{{- include "devnet.chain.name" $chain.name }}
+        {{- end }}
+        {{- if and ($chain.faucet.enabled) (eq $chain.faucet.type "starship") }}
+        - name: faucet
+          emptyDir: { }
+        {{- end }}
+---
+{{- end }}
+{{- end }}

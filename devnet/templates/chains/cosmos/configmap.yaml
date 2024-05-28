@@ -1,0 +1,53 @@
+{{- range $chain := .Values.chains }}
+{{- if ne $chain.type "virtual" }}
+{{ $defaultFile := $.Files.Get "defaults.yaml" | fromYaml }}
+{{ $chain := include "devnet.fullchain" (dict "name" $chain.name "file" $defaultFile "context" $) | fromJson }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: setup-scripts-{{ $chain.hostname }}
+data:
+  {{- range $k, $v := $chain.scripts }}
+  {{- if hasKey $v "data" }}
+  {{ $v.name }}: |-
+    {{- $v.data | nindent 4 }}
+  {{- else }}
+  {{ $v.name }}: |-
+    {{- $.Files.Get $v.file | nindent 4 }}
+  {{- end }}
+  {{- end }}
+---
+{{- if hasKey $chain "genesis" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patch-{{ $chain.hostname }}
+data:
+  genesis.json: |-
+    {{ toJson $chain.genesis | nindent 4 }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keys
+data:
+  {{- range $path, $_ := .Files.Glob "configs/keys.json" }}
+  {{ base $path }}: |-
+    {{- $.Files.Get $path | nindent 4}}
+  {{- end }}
+---
+# Configmap with setup-scripts that are not chain specific
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: setup-scripts
+data:
+  transfer-tokens.sh: |-
+    {{- $.Files.Get "scripts/default/transfer-tokens.sh" | nindent 4 }}
+---

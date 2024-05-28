@@ -1,0 +1,39 @@
+{{- range $chain := .Values.chains }}
+{{- if eq $chain.type "virtual" }}
+{{- if eq $chain.subtype "eth" }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: prysm
+  labels:
+    app: prysm
+spec:
+  {{- if $chain.external }}
+  type: LoadBalancer
+  {{- else }}
+  type: NodePort
+  {{- end }}
+  selector:
+    app: prysm
+  ports:
+    - name: beacon-api
+      protocol: TCP
+      port: 3500
+      targetPort: 3500
+    - name: beacon-grpc
+      protocol: TCP
+      port: 4000
+      targetPort: 4000
+    - name: geth-http
+      protocol: TCP
+      port: 8545
+      targetPort: 8545
+    - name: geth-authrpc
+      protocol: TCP
+      port: 8551
+      targetPort: 8551
+
+{{- end }}
+{{- end }}
+{{- end }}

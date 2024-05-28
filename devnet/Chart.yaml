@@ -1,0 +1,9 @@
+apiVersion: v2
+appVersion: 0.1.1
+description: A Helm chart for Kubernetes
+maintainers:
+- name: Starship
+  url: https://github.com/cosmology-tech/starship
+name: devnet
+type: application
+version: 0.1.49-rc1

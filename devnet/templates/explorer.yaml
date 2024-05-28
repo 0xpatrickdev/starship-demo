@@ -1,0 +1,121 @@
+{{- if .Values.explorer.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: explorer
+  labels:
+    app.kubernetes.io/name: explorer
+spec:
+  clusterIP: None
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/name: explorer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: explorer
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: explorer
+      app.kubernetes.io/name: explorer
+  template:
+    metadata:
+      annotations:
+        quality: release
+        role: api-gateway
+        sla: high
+        tier: gateway
+      labels:
+        app.kubernetes.io/instance: explorer
+        app.kubernetes.io/type: {{ .Values.explorer.type }}
+        app.kubernetes.io/name: explorer
+        app.kubernetes.io/rawname: explorer
+        app.kubernetes.io/version: {{ $.Chart.AppVersion }}
+    spec:
+      {{- include "imagePullSecrets" .Values.explorer | indent 6 }}
+      containers:
+        - name: explorer
+          image: {{ .Values.explorer.image }}
+          imagePullPolicy: {{ $.Values.images.imagePullPolicy }}
+          command:
+            - bash
+            - "-c"
+            - |
+              yarn serve --host 0.0.0.0 --port 8080
+          resources:
+{{- include "getResourceObject" .Values.explorer.resources | indent 12 }}
+          volumeMounts:
+            - mountPath: /home/explorer/chains/mainnet
+              name: explorer-configs
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: explorer-configs
+          configMap:
+            name: explorer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: explorer
+data:
+  {{ $defaultFile := $.Files.Get "defaults.yaml" | fromYaml }}
+  {{- range $chain := .Values.chains }}
+  {{ $chain := include "devnet.fullchain" (dict "name" $chain.name "file" $defaultFile "context" $) | fromJson }}
+  {{ $host := "localhost" }}
+  {{- if not $.Values.explorer.localhost }}
+  {{ $host := printf "%s-genesis.%s.svc.cluster.local" $chain.hostname $.Release.Namespace }}
+  {{- end }}
+  {{ $chain.name }}.json: |-
+    {
+      "chain_name": "{{ $chain.name }}",
+      "coingecko": "{{ $chain.type }}",
+      {{- if $.Values.ingress.enabled }}
+      "api": "https://rest.{{ $chain.name }}-genesis.{{ $.Values.ingress.host | replace "*." "" }}:443",
+      "rpc": [
+        "https://rpc.{{ $chain.name }}-genesis.{{ $.Values.ingress.host | replace "*." "" }}:443",
+        "https://rpc.{{ $chain.name }}-genesis.{{ $.Values.ingress.host | replace "*." "" }}:443"
+      ],
+      {{- else }}
+      "api": "http://{{ $host }}:{{ $chain.ports.rest }}",
+      "rpc": [
+        "http://{{ $host }}:{{ $chain.ports.rpc }}",
+        "http://{{ $host }}:{{ $chain.ports.rpc }}"
+      ],
+      {{- end }}
+      "snapshot_provider": "",
+      "sdk_version": "0.45.6",
+      "coin_type": "{{ $chain.coinType }}",
+      "min_tx_fee": "3000",
+      "addr_prefix": "{{ $chain.prefix }}",
+      "logo": "",
+      "assets": [
+        {
+          "base": "{{ $chain.denom }}",
+          "symbol": "{{ $chain.prefix | upper }}",
+          "exponent": "6",
+          "coingecko_id": "{{ $chain.name }}",
+          "logo": ""
+        }
+      ]
+    }
+  {{- end }}
+---
+{{- end }}

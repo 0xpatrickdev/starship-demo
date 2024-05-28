@@ -1,0 +1,52 @@
+{
+  "genesis": [
+    {
+      "name": "genesis",
+      "type": "local",
+      "mnemonic": "razor dog gown public private couple ecology paper flee connect local robot diamond stay rude join sound win ribbon soup kidney glass robot vehicle"
+    }
+  ],
+  "validators": [
+    {
+      "name": "validator",
+      "type": "local",
+      "mnemonic": "issue have volume expire shoe year finish poem alien urban license undo rural endless food host opera fix forum crack wide example firm learn"
+    }
+  ],
+  "faucet": [
+    {
+      "name": "faucet",
+      "type": "local",
+      "mnemonic": "chimney become stuff spoil resource supply picture divorce casual curve check web valid survey zebra various pet sphere timber friend faint blame mansion film"
+    }
+  ],
+  "keys": [
+    {
+      "name": "test1",
+      "type": "local",
+      "mnemonic": "opinion knife other balcony surge more bamboo canoe romance ask argue teach anxiety adjust spike mystery wolf alone torch tail six decide wash alley"
+    },
+    {
+      "name": "test2",
+      "type": "local",
+      "mnemonic": "logic help only text door wealth hurt always remove glory viable income agent olive trial female couch old offer crash menu zero pencil thrive"
+    },
+    {
+      "name": "test3",
+      "type": "local",
+      "mnemonic": "middle weather hip ghost quick oxygen awful library broken chicken tackle animal crunch appear fee indoor fitness enough orphan trend tackle faint eyebrow all"
+    }
+  ],
+  "relayers": [
+    {
+      "name": "relayer",
+      "type": "local",
+      "mnemonic": "pen quit web pill hunt hobby tonight base wine black era cereal veteran trouble december method diet orbit copper nephew into badge olympic repair"
+    },
+    {
+      "name": "relayer-cli",
+      "type": "local",
+      "mnemonic": "marine suspect wood vague vast pet cargo tenant oyster tuna news river follow chicken shoulder ceiling guess never help dismiss grape scheme oyster produce"
+    }
+  ]
+}
