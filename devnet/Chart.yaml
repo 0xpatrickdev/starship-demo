@@ -6,4 +6,4 @@ maintainers:
   url: https://github.com/cosmology-tech/starship
 name: devnet
 type: application
-version: 0.1.49-rc1
+version: 0.1.49-agoric
