@@ -14,8 +14,12 @@
   "packageManager": "yarn@4.1.0",
   "devDependencies": {
     "@agoric/cosmic-proto": "0.4.1-dev-08f8549.0",
+    "@agoric/rpc": "0.9.1-dev-02a116c.0",
+    "@agoric/wallet-connection": "0.1.18-dev-3c781f6.0",
+    "@agoric/web-components": "0.15.1-dev-02a116c.0",
     "@cosmjs/crypto": "^0.32.2",
     "@cosmjs/proto-signing": "^0.32.2",
+    "@cosmjs/stargate": "^0.32.2",
     "@types/eslint": "^8",
     "@types/node": "^20.11.13",
     "@typescript-eslint/eslint-plugin": "^6.20.0",

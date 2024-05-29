@@ -4,10 +4,10 @@ import type {
 } from '@agoric/cosmic-proto/cosmos/bank/v1beta1/query.js';
 
 // TODO use telescope generated query client from @agoric/cosmic-proto
-export function makeQueryClient(rpcUrl: string) {
+export function makeQueryClient(apiUrl: string) {
   const query = async <T>(path: string): Promise<T> => {
     try {
-      const res = await fetch(`${rpcUrl}${path}`);
+      const res = await fetch(`${apiUrl}${path}`);
       const json = await res.json();
       return json as T;
     } catch (err) {

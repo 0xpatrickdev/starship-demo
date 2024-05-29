@@ -2,7 +2,7 @@
     "compilerOptions": {
       "checkJs": false,
       "module": "esnext",
-      "moduleResolution": "bundler"
+      "moduleResolution": "node"
     },
     "skipLibCheck": true,
     "exclude": [
