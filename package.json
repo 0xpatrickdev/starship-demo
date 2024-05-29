@@ -13,6 +13,9 @@
   },
   "packageManager": "yarn@4.1.0",
   "devDependencies": {
+    "@agoric/cosmic-proto": "0.4.1-dev-08f8549.0",
+    "@cosmjs/crypto": "^0.32.2",
+    "@cosmjs/proto-signing": "^0.32.2",
     "@types/eslint": "^8",
     "@types/node": "^20.11.13",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
