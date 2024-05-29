@@ -21,19 +21,9 @@ chains:
     resources:
       cpu: 1
       memory: 4Gi
-    scripts:
-      buildChain:
-        file: scripts/build-chain.sh
-      createGenesis:
-        file: scripts/create-genesis.sh
-      updateGenesis:
-       file: scripts/update-genesis.sh
-      updateConfig:
-        file: scripts/update-config.sh
-      createValidator:
-        file: scripts/create-validator.sh
-      transferTokens:
-       file: scripts/transfer-tokens.sh
+    env:
+      - name: DEBUG
+        value: SwingSet:vat,SwingSet:ls
   - name: osmosislocal
     type: osmosis
     numValidators: 1

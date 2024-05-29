@@ -20,9 +20,9 @@ DRY_RUN=""
 TIMEOUT=""
 NAMESPACE=""
 HELM_REPO="starship"
-HELM_CHART="starship/devnet"
+HELM_CHART="devnet/devnet-0.1.49-agoric.tgz"
 HELM_REPO_URL="https://cosmology-tech.github.io/starship/"
-HELM_CHART_VERSION="0.1.49-rc1"
+HELM_CHART_VERSION="0.1.49-agoric"
 HELM_NAME="starship-getting-started"
 
 # check_helm function verifies the helm binary is installed
@@ -77,7 +77,10 @@ function install_chart() {
   args=""
   set_helm_args
   echo "name: ${HELM_NAME}, args: $args, chart: ${HELM_CHART}, version: ${HELM_CHART_VERSION}"
-  helm install ${HELM_NAME} ${HELM_CHART} --version ${HELM_CHART_VERSION} -f ${CONFIGFILE} $args
+  # helm install ${HELM_NAME} ${HELM_CHART} --version ${HELM_CHART_VERSION} -f ${CONFIGFILE} $args
+  
+  helm install ${HELM_NAME} ${HELM_CHART} -f ${CONFIGFILE} $args
+
 }
 
 while [ $# -gt 0 ]; do
@@ -96,6 +99,10 @@ while [ $# -gt 0 ]; do
       ;;
     -n|--name)
       HELM_NAME="$2"
+      shift 2 # past argument
+      ;;
+    --chart)
+      HELM_CHART="$2"
       shift 2 # past argument
       ;;
     --namespace)

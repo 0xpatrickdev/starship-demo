@@ -2,8 +2,9 @@ NAME = starship-getting-started
 FILE = starship.yaml
 
 HELM_REPO = starship
-HELM_CHART = devnet
-HELM_VERSION = v0.1.49-rc1
+HELM_CHART = devnet/devnet-0.1.49-agoric.tgz
+# HELM_CHART = devnet
+HELM_VERSION = v0.1.49-agoric
 
 ###############################################################################
 ###                              All commands                               ###
@@ -31,7 +32,7 @@ setup-deps:
 ###############################################################################
 
 install:
-	bash $(CURDIR)/scripts/install.sh --config $(FILE) --name $(NAME) --version $(HELM_VERSION)
+	bash $(CURDIR)/scripts/install.sh --config $(FILE) --name $(NAME) --chart $(HELM_CHART)
 
 delete:
 	-helm delete $(NAME)
