@@ -30,7 +30,7 @@ jobs:
         id: starship-infra
         uses: cosmology-tech/starship-action@0.2.12
         with:
-          values: starship.yaml
+          values: starship.ci.yaml
           port-forward: true
           version: 0.1.49-rc1
 
