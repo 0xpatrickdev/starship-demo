@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+      "checkJs": false,
+      "module": "esnext",
+      "moduleResolution": "bundler"
+    },
+    "skipLibCheck": true,
+    "exclude": [
+        "node_modules"
+    ]
+}
