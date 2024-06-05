@@ -1,6 +1,6 @@
 chains:
-  - name: agoriclocal
-    type: agoric
+  - id: agoriclocal
+    name: agoric
     image: ghcr.io/agoric/agoric-sdk:dev
     numValidators: 1
     genesis:
@@ -21,8 +21,8 @@ chains:
     resources:
       cpu: 1
       memory: 4Gi
-  - name: osmosislocal
-    type: osmosis
+  - id: osmosislocal
+    name: osmosis
     numValidators: 1
     genesis:
       app_state:
@@ -50,8 +50,8 @@ chains:
     resources:
       cpu: "0.1"
       memory: "100M"
-  - name: gaialocal
-    type: cosmos
+  - id: gaialocal
+    name: cosmoshub
     numValidators: 1
     genesis:
       app_state:
