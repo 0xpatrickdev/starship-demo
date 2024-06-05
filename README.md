@@ -15,6 +15,18 @@ make port-forward
 make stop
 ```
 
+To setup finish setting up Agoric, also run:
+
+```bash
+make fund-provision-poool
+```
+
+You can use these commands to fund an account and make a smart wallet:
+```bash
+ADDR=agoric123 COIN=100000ubld make fund-wallet
+ADDR=agoric123 make provision-smart-wallet
+```
+
 For more detailed step-by-step approach checkout the rest of the README.
 
 ## Dependencies

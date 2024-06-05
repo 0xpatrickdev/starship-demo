@@ -1,13 +1,19 @@
 chains:
-  - name: agoriclocal
-    type: agoric
-    image: ghcr.io/agoric/agoric-3-proposals@sha256:0a5b643b03a42e71926a4add9fa91711be8e13a670f0dea106d42be1fbcc2b66
+  - id: agoriclocal
+    name: agoric
+    image: ghcr.io/agoric/agoric-sdk:dev
     numValidators: 1
+    env:
+      - name: DEBUG
+        value: SwingSet:vat,SwingSet:ls
     genesis:
       app_state:
         staking:
           params:
             unbonding_time: "48h"
+        swingset:
+          params:
+            bootstrap_vat_config: "@agoric/vm-config/decentral-devnet-config.json"
     faucet:
       enabled: false
     ports:
@@ -17,22 +23,9 @@ chains:
       grpc: 9090
     resources:
       cpu: 1
-      memory: 2Gi
-    scripts:
-      buildChain:
-        file: scripts/build-chain.sh
-      createGenesis:
-        file: scripts/create-genesis.sh
-      updateGenesis:
-       file: scripts/update-genesis.sh
-      updateConfig:
-        file: scripts/update-config.sh
-      createValidator:
-        file: scripts/create-validator.sh
-      transferTokens:
-       file: scripts/transfer-tokens.sh
-  - name: osmosislocal
-    type: osmosis
+      memory: 4Gi
+  - id: osmosislocal
+    name: osmosis
     numValidators: 1
     genesis:
       app_state:
@@ -57,8 +50,8 @@ chains:
       rpc: 26655
       grpc: 9093
       faucet: 8084
-  - name: gaialocal
-    type: cosmos
+  - id: gaialocal
+    name: cosmoshub
     numValidators: 1
     genesis:
       app_state:
