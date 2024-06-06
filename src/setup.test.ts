@@ -18,7 +18,7 @@ test('assets can be retrieved from config', async (t) => {
     },
   ]);
 
-  t.like(useChain('cosmos').chainInfo.nativeAssetList.assets, [
+  t.like(useChain('cosmoshub').chainInfo.nativeAssetList.assets, [
     {
       base: 'uatom',
     },
@@ -33,7 +33,7 @@ test('staking info can be retrieved from config', async (t) => {
     lock_duration: { time: '1209600s' },
   });
 
-  t.like(useChain('cosmos').chain.staking, {
+  t.like(useChain('cosmoshub').chain.staking, {
     staking_tokens: [{ denom: 'uatom' }],
     lock_duration: { time: '1209600s' },
   });
