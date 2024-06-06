@@ -31,7 +31,7 @@ jobs:
         id: starship-infra
         uses: cosmology-tech/starship-action@0.2.19
         with:
-          values: starship.ci.yaml
+          values: starship.yaml
           port-forward: true
           version: 0.2.2
           timeout: 30m

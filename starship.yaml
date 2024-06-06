@@ -91,10 +91,10 @@ relayers:
       - agoriclocal
       - gaialocal
 
-explorer:
-  enabled: true
-  ports:
-    rest: 8080
+# explorer:
+#   enabled: true
+#   ports:
+#     rest: 8080
 
 registry:
   enabled: true
