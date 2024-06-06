@@ -48,8 +48,8 @@ chains:
       grpc: 9093
       faucet: 8084
     resources:
-      cpu: "0.1"
-      memory: "100M"
+      cpu: "0.2"
+      memory: "200M"
   - id: gaialocal
     name: cosmoshub
     numValidators: 1
@@ -71,8 +71,8 @@ chains:
       grpc: 9092
       faucet: 8083
     resources:
-      cpu: "0.1"
-      memory: "100M"
+      cpu: "0.2"
+      memory: "200M"
 
 relayers:
   - name: osmosis-gaia
@@ -82,8 +82,8 @@ relayers:
       - osmosislocal
       - gaialocal
     resources:
-      cpu: "0.1"
-      memory: "100M"
+      cpu: "0.2"
+      memory: "200M"
   - name: agoric-osmosis
     type: hermes
     replicas: 1
@@ -91,8 +91,8 @@ relayers:
       - agoriclocal
       - osmosislocal
     resources:
-      cpu: "0.1"
-      memory: "100M"
+      cpu: "0.2"
+      memory: "200M"
   - name: agoric-gaia
     type: hermes
     replicas: 1
@@ -100,31 +100,23 @@ relayers:
       - agoriclocal
       - gaialocal
     resources:
-      cpu: "0.1"
-      memory: "100M"
-
-explorer:
-  enabled: true
-  ports:
-    rest: 8080
-  resources:
-      cpu: "0.1"
-      memory: "100M"
+      cpu: "0.2"
+      memory: "200M"
 
 registry:
   enabled: true
   ports:
     rest: 8081
   resources:
-      cpu: "0.1"
-      memory: "100M"
+      cpu: "0.2"
+      memory: "200M"
 
 exposer:
   resources:
-    cpu: "0.1"
-    memory: "100M"
+    cpu: "0.2"
+    memory: "200M"
 
 faucet:
   resources:
-    cpu: "0.1"
-    memory: "100M"
+    cpu: "0.2"
+    memory: "200M"
