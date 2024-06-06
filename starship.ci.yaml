@@ -41,15 +41,14 @@ chains:
             allow_queries: ["*"]
     faucet:
       enabled: true
-      type: starship
     ports:
       rest: 1315
       rpc: 26655
       grpc: 9093
       faucet: 8084
     resources:
-      cpu: "0.2"
-      memory: "200M"
+      cpu: "0.5"
+      memory: "500M"
   - id: gaialocal
     name: cosmoshub
     numValidators: 1
