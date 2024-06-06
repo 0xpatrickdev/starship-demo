@@ -3,9 +3,9 @@ chains:
     name: agoric
     image: ghcr.io/agoric/agoric-sdk:dev
     numValidators: 1
-    env:
-      - name: DEBUG
-        value: SwingSet:vat,SwingSet:ls
+    # env:
+    #   - name: DEBUG
+    #     value: SwingSet:vat,SwingSet:ls
     genesis:
       app_state:
         staking:
