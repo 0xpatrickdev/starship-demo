@@ -28,7 +28,7 @@ jobs:
   
       - name: Set Up Starship Infrastructure
         id: starship-infra
-        uses: cosmology-tech/starship-action@0.2.12
+        uses: cosmology-tech/starship-action@0.2.19
         with:
           values: starship.ci.yaml
           port-forward: true
